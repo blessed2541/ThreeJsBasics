@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
 
-const ThreeScene = () => {
+const ThreeSceneCube = () => {
   // useRef will provide a reference to the DOM element where we'll mount the Three.js scene
   const mountRef = useRef(null);
 
@@ -90,4 +90,4 @@ const ThreeScene = () => {
   );
 };
 
-export default ThreeScene;
+export default ThreeSceneCube;
