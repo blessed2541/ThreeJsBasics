@@ -1,0 +1,17 @@
+html,
+body {
+  margin: 0; /* Remove default margin */
+  padding: 0; /* Remove default padding */
+  width: 100vw; /* Set width to 100% of viewport width */
+  height: 100vh; /* Set height to 100% of viewport height */
+  overflow: hidden; /* Prevent scrollbars from appearing */
+  background-color: #333; /* Optional: Set a background for body if needed */
+}
+
+#root {
+  width: 100%; /* Make root div fill its parent (body) */
+  height: 100%; /* Make root div fill its parent (body) */
+}
+
+/* You can keep other default styles below if needed, */
+/* but ensure they don't conflict (e.g., add padding back). */

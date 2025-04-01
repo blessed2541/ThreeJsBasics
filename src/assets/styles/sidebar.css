@@ -1,0 +1,32 @@
+/* src/Sidebar.css */
+.Sidebar {
+  width: 200px; /* Set a fixed width for the sidebar */
+  height: 100%; /* Make it fill the vertical height */
+  padding: 20px;
+  background-color: #e0e0e0; /* Light gray background */
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  box-sizing: border-box; /* Include padding in the width */
+  overflow-y: auto; /* Add scroll if content exceeds height */
+  display: flex;
+  flex-direction: column; /* Stack items vertically */
+  gap: 10px; /* Add space between buttons */
+}
+
+.Sidebar h2 {
+  margin-top: 0;
+  text-align: center;
+  color: #333;
+}
+
+.Sidebar button {
+  padding: 10px 15px;
+  border: 1px solid #ccc;
+  background-color: #f8f8f8;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.Sidebar button:hover {
+  background-color: #d8d8d8;
+}
