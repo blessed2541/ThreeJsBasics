@@ -1,160 +1,123 @@
-// src/ThreeScene.jsx
-import React, { useRef, useEffect } from "react";
-import * as THREE from "three";
-// Import the GLTFLoader addon
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+// src/ThreeSceneR3F.jsx (or replace content of ThreeSceneImport.jsx)
+import React, { Suspense, useEffect, useRef } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import {
+  OrbitControls,
+  PerspectiveCamera,
+  useGLTF,
+  Text,
+} from "@react-three/drei";
+import * as THREE from "three"; // Still needed for things like THREE.Color if used explicitly
 
-const ThreeSceneImport = () => {
-  const mountRef = useRef(null);
+// Import your interactive box component
+import InteractiveBox from "./InteractiveBox";
 
-  // useEffect runs after the component mounts and handles setup/cleanup
+// Helper component to handle GLTF model loading and setup
+function Model(props) {
+  // useGLTF loads the model. It uses React Suspense, so we need <Suspense> around it.
+  // Make sure the path matches exactly where your model file is served from.
+  // Use the path that worked previously in loader.load().
+  const { scene } = useGLTF("/models/small_city/small_city.gltf"); // <-- ADJUST PATH IF NEEDED
+
+  // useEffect to traverse the model and enable shadows once it's loaded
   useEffect(() => {
-    // Get the mount point (the div returned by the component)
-    const currentMount = mountRef.current;
-    const { clientWidth: width, clientHeight: height } = currentMount;
+    if (scene) {
+      scene.traverse((node) => {
+        if (node.isMesh) {
+          node.castShadow = true;
+          node.receiveShadow = true;
+        }
+      });
+    }
+  }, [scene]); // Re-run if the scene object changes
 
-    // 1. Scene Setup
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xcccccc); // Gray background
+  // <primitive> renders the loaded Three.js Object3D (the scene)
+  // Pass position, scale etc. as props if needed
+  return <primitive object={scene} {...props} />;
+}
 
-    // 2. Camera Setup
-    const camera = new THREE.PerspectiveCamera(
-      50, // Field of View
-      width / height, // Aspect Ratio
-      0.1, // Near clipping plane
-      10000 // Far clipping plane (increased for larger model)
-    );
-    // Initial camera position - Adjust these values to get a good starting view!
-    camera.position.set(-1000, 1500, 1500);
-    camera.lookAt(scene.position); // Look at the center of the scene (0,0,0)
+// Helper component to update OrbitControls if damping is enabled
+function ControlsUpdater() {
+  const { controls } = useThree();
+  useFrame(() => {
+    // controls?.update() is important for damping to work smoothly
+    if (controls?.enabled) {
+      controls.update();
+    }
+  });
+  return null; // This component doesn't render anything itself
+}
 
-    // 3. Renderer Setup
-    const renderer = new THREE.WebGLRenderer({ antialias: true }); // Antialiasing on
-    renderer.setSize(width, height);
-    renderer.shadowMap.enabled = true; // Enable shadows
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
-    currentMount.appendChild(renderer.domElement); // Add canvas to the mount div
+// Main component using R3F
+function ThreeSceneR3F() {
+  // Define initial camera position (adjust as needed)
+  const initialCameraPosition = [-1000, 1500, 1500];
+  // Define position for the interactive box (adjust as needed)
+  const boxPosition = [100, 500, 100]; // Example position
 
-    // 4. OrbitControls Setup
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; // Enable smooth damping effect
-    controls.dampingFactor = 0.05; // Damping inertia
-    // Optional: Configure limits if needed
-    // controls.minDistance = 5;
-    // controls.maxDistance = 150; // Example max zoom out
-
-    // 5. Lighting Setup
-    const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // Soft ambient light
-    scene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0); // Stronger directional light
-    directionalLight.position.set(30, 50, 20); // Position light source
-    directionalLight.castShadow = true; // Enable shadow casting
-    // Configure shadow properties (adjust based on scene size)
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
-    directionalLight.shadow.camera.near = 0.5;
-    directionalLight.shadow.camera.far = 100; // Adjust far plane for shadow camera
-    directionalLight.shadow.camera.left = -50;
-    directionalLight.shadow.camera.right = 50;
-    directionalLight.shadow.camera.top = 50;
-    directionalLight.shadow.camera.bottom = -50;
-    scene.add(directionalLight);
-    // Optional helpers for debugging light/shadow:
-    // const dirLightHelper = new THREE.DirectionalLightHelper(directionalLight, 5);
-    // scene.add(dirLightHelper);
-    // const shadowHelper = new THREE.CameraHelper(directionalLight.shadow.camera);
-    // scene.add(shadowHelper);
-
-    // 6. Model Loading Setup
-    const loader = new GLTFLoader();
-    loader.load(
-      // Corrected path relative to the 'public' folder
-      "/models/small_city/small_city.gltf",
-      // onLoad callback: Executed when model loads successfully
-      (gltf) => {
-        console.log("Model loaded successfully:", gltf);
-        const model = gltf.scene;
-
-        // Adjust model scale/position if needed
-        model.scale.set(1.0, 1.0, 1.0);
-        model.position.set(0, 0, 0); // Place model at the origin
-
-        // Enable shadows for all meshes within the loaded model
-        model.traverse((node) => {
-          if (node.isMesh) {
-            node.castShadow = true;
-            node.receiveShadow = true;
-          }
-        });
-
-        scene.add(model); // Add the model to the main scene
-        console.log("Model added to scene.");
-
-        // Optional: Set OrbitControls target after model loads
-        // const box = new THREE.Box3().setFromObject(model);
-        // const center = box.getCenter(new THREE.Vector3());
-        // controls.target.copy(center); // Make controls orbit around model center
-        // controls.update(); // IMPORTANT: Update controls after changing target
-      },
-      // onProgress callback: Executed during loading
-      (xhr) => {
-        const percentLoaded = (xhr.loaded / xhr.total) * 100;
-        console.log(`Model loading: ${percentLoaded.toFixed(2)}%`);
-      },
-      // onError callback: Executed if loading fails
-      (error) => {
-        console.error("Error loading model:", error);
-      }
-    );
-
-    // 7. Resize Handling Setup
-    const handleResize = () => {
-      const { clientWidth: newWidth, clientHeight: newHeight } = currentMount;
-      camera.aspect = newWidth / newHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(newWidth, newHeight);
-    };
-    window.addEventListener("resize", handleResize);
-
-    // 8. Animation Loop Setup
-    let animationFrameId;
-    const animate = () => {
-      animationFrameId = requestAnimationFrame(animate); // Queue next frame
-      controls.update(); // IMPORTANT: Update controls each frame (needed for damping)
-      renderer.render(scene, camera); // Render the scene
-    };
-    animate(); // Start the animation loop
-
-    // 9. Cleanup Function (runs when component unmounts)
-    return () => {
-      cancelAnimationFrame(animationFrameId); // Stop animation loop
-      window.removeEventListener("resize", handleResize); // Remove resize listener
-      controls.dispose(); // Dispose orbit controls (removes listeners)
-
-      // Remove renderer canvas from DOM
-      if (currentMount && currentMount.contains(renderer.domElement)) {
-        currentMount.removeChild(renderer.domElement);
-      }
-
-      renderer.dispose(); // Dispose renderer resources
-
-      // You might need more complex cleanup for the loaded model's
-      // geometries, materials, and textures if you frequently load/unload models
-      // to prevent memory leaks, but start without it for simplicity.
-
-      console.log("ThreeScene cleanup complete.");
-    };
-  }, []); // Empty dependency array ensures this effect runs only once on mount/unmount
-
-  // The mount point div remains the same
   return (
-    <div
-      ref={mountRef}
-      style={{ width: "100%", height: "100%", display: "block" }}
-    />
-  );
-};
+    // The div container remains the same
+    <div style={{ width: "100%", height: "100%", display: "block" }}>
+      {/* Canvas sets up the R3F scene */}
+      <Canvas
+        shadows // Enable shadows globally for the renderer
+        // Optional: Set camera properties directly here if not using PerspectiveCamera component below
+        // camera={{ position: initialCameraPosition, fov: 50, near: 0.1, far: 10000 }}
+      >
+        {/* Set background color */}
+        <color attach="background" args={["#cccccc"]} />
 
-export default ThreeSceneImport;
+        {/* Use Drei's PerspectiveCamera component */}
+        {/* 'makeDefault' makes it the primary camera R3F uses */}
+        <PerspectiveCamera
+          makeDefault
+          fov={50}
+          near={0.1}
+          far={10000} // Use the increased far plane
+          position={initialCameraPosition}
+        />
+
+        {/* Use Drei's OrbitControls component */}
+        <OrbitControls
+          enableDamping // Enable smooth damping
+          dampingFactor={0.05}
+          // Optional limits:
+          // minDistance={5}
+          // maxDistance={3000} // Adjust max zoom based on camera distance
+        />
+
+        {/* Lights */}
+        <ambientLight intensity={1.5} />
+        <directionalLight
+          position={[30, 50, 20]} // Same position as before
+          intensity={2.0}
+          castShadow
+          // Shadow properties translated to dash-case attributes
+          shadow-mapSize-width={1024}
+          shadow-mapSize-height={1024}
+          shadow-camera-near={0.5}
+          shadow-camera-far={100} // Adjust if needed
+          shadow-camera-left={-50}
+          shadow-camera-right={50}
+          shadow-camera-top={50}
+          shadow-camera-bottom={-50}
+        />
+
+        {/* Suspense is needed for useGLTF while the model is loading */}
+        <Suspense fallback={null}>
+          {/* Render the Model component */}
+          <Model scale={1.0} position={[0, 0, 0]} />
+        </Suspense>
+
+        {/* Render your Interactive Box! */}
+        <InteractiveBox position={boxPosition} />
+
+        {/* Add the helper to update controls for damping */}
+        <ControlsUpdater />
+      </Canvas>
+    </div>
+  );
+}
+
+// Export the R3F version
+export default ThreeSceneR3F;
